@@ -8,55 +8,66 @@
 
 import UIKit
 
-internal class SegementSlideHeaderView: UIView {
+public protocol SegmentSlideHeaderViewDelegate: class {
+  func hitTest(_ headerView: SegementSlideHeaderView, point: CGPoint, with event: UIEvent?) -> UIView?
+}
+
+public class SegementSlideHeaderView: UIView {
+  
+  public weak var delegate: SegmentSlideHeaderViewDelegate?
+  
+  private weak var lastHeaderView: UIView?
+  private weak var segementSlideContentView: SegementSlideContentView?
+  
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setup()
+  }
+  
+  required init?(coder aDecoder: NSCoder) {
+    super.init(coder: aDecoder)
+    setup()
+  }
+  
+  private func setup() {
+    backgroundColor = .clear
+  }
+  
+  internal func config(_ headerView: UIView?, segementSlideContentView: SegementSlideContentView) {
+    guard headerView != lastHeaderView else { return }
+    if let lastHeaderView = lastHeaderView {
+      lastHeaderView.removeAllConstraints()
+      lastHeaderView.removeFromSuperview()
+    }
+    guard let headerView = headerView else { return }
+    self.segementSlideContentView = segementSlideContentView
+    addSubview(headerView)
+    headerView.constraintToSuperview()
+    lastHeaderView = headerView
+  }
+  
+  public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+    let view = super.hitTest(point, with: event)
     
-    private weak var lastHeaderView: UIView?
-    private weak var segementSlideContentView: SegementSlideContentView?
-    
-    internal override init(frame: CGRect) {
-        super.init(frame: frame)
-        setup()
+    if let delegate = self.delegate {
+      return delegate.hitTest(self, point: point, with: event)
     }
     
-    internal required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-        setup()
+    guard let segementSlideContentView = segementSlideContentView else {
+      return view
     }
     
-    private func setup() {
-        backgroundColor = .clear
+    guard let selectedIndex = segementSlideContentView.selectedIndex,
+          let segementSlideContentScrollViewDelegate = segementSlideContentView.dequeueReusableViewController(at: selectedIndex)
+    else {
+      return view
     }
-    
-    internal func config(_ headerView: UIView?, segementSlideContentView: SegementSlideContentView) {
-        guard headerView != lastHeaderView else { return }
-        if let lastHeaderView = lastHeaderView {
-            lastHeaderView.removeAllConstraints()
-            lastHeaderView.removeFromSuperview()
-        }
-        guard let headerView = headerView else { return }
-        self.segementSlideContentView = segementSlideContentView
-        addSubview(headerView)
-        headerView.constraintToSuperview()
-        lastHeaderView = headerView
+    if view is UIControl {
+      return view
     }
-    
-    internal override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let view = super.hitTest(point, with: event)
-        guard let segementSlideContentView = segementSlideContentView else {
-            return view
-        }
-        guard let selectedIndex = segementSlideContentView.selectedIndex,
-            let segementSlideContentScrollViewDelegate = segementSlideContentView.dequeueReusableViewController(at: selectedIndex)
-            else {
-            return view
-        }
-        if view is UIControl {
-            return view
-        }
-        if !(view?.gestureRecognizers?.isEmpty ?? true) {
-            return view
-        }
-        return segementSlideContentScrollViewDelegate.scrollView
+    if !(view?.gestureRecognizers?.isEmpty ?? true) {
+      return view
     }
-    
+    return segementSlideContentScrollViewDelegate.scrollView
+  }
 }
